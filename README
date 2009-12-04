@@ -1,0 +1,80 @@
+Simple Persistence for Clojure is a journal-based persistence library for Clojure programs. It follows "Prevalent system" design pattern.
+
+I consider it a good fit for the prototyping stage of a project development. When you don't want to pay the price of impedance mismatch between the language data structures and your database because your database schema is not stable yet.
+
+However this pattern is used in production by some teams, see Prevayler mail list for details. Of course this implementation can contain bugs and must be tested well before doing that. Though it is very simple and I made some tests.
+
+The disadvantage of the pattern is that your data structures must fit in memory (unless you implement ad-hoc paging solution). However the journaling nature lets you easily switch to other databases. For that you just re-implement your transaction functions (subjects of apply-transaction* ) to write/read from another DB and replay transactions one time (init-db).
+
+The library creates journals in readable and executable form, so you can freely copy paste the transactions, and execute them in REPL. Just wrap them into (dosync) call.
+
+Snapshotting is not yet implemented. It can solve another pattern problem - growing startup time.
+
+In comparison with Prevayler, this library does not block the reads, because  it relies on Clojure STM. However it blocks the writes as Prevayler, because currently there is no way to reliably get/ generate a transaction id without locking.
+
+I think it's possible to modify Clojure STM to return a global transaction id. Then locking inside the library can be omitted and writes will not be blocking each other.
+
+Probably it's not as important now, when the most of today computers have <=8 cores and the typical usage pattern is that there are an order of magnitude more reads than writes.
+
+Usage examples:
+
+1. first run
+
+(use 'persister)
+
+(def refx (ref 0))
+(def refy (ref 0))
+
+(defn tr-fn [x y]
+   (do
+       (alter refx + x)
+       (alter refy + y) ))
+
+(defn tr-fn-swap []
+   (let [tmp @refx]
+       (ref-set refx @refy)
+       (ref-set refy tmp)))
+
+(defn tr-inc []
+   (ref-set refx (inc @refx))
+   (ref-set refy (inc @refy)) )
+
+(init-db)
+(apply-transaction tr-fn 1 2)
+(apply-transaction tr-fn 10 20)
+(apply-transaction tr-fn-swap)
+(apply-transaction tr-inc)
+[refx refy]
+
+[#<Ref@5bb966: 23> #<Ref@1e903d5: 12>]
+
+2. the second run
+
+(use 'persister)
+
+(def refx (ref 0))
+(def refy (ref 0))
+
+(defn tr-fn [x y]
+   (do
+       (alter refx + x)
+       (alter refy + y) ))
+
+(defn tr-fn-swap []
+   (let [tmp @refx]
+       (ref-set refx @refy)
+       (ref-set refy tmp)))
+
+(defn tr-inc []
+   (ref-set refx (inc @refx))
+   (ref-set refy (inc @refy)) )
+
+(init-db)
+[refx refy]
+
+[#<Ref@5bb966: 23> #<Ref@1e903d5: 12>]
+
+
+Note that journaled functions must be accessible in the current namespace when you replay transactions.
+
+See inline doc for details.
