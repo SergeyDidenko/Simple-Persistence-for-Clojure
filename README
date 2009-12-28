@@ -1,12 +1,16 @@
 Simple Persistence for Clojure is a journal-based persistence library for Clojure programs. It follows "Prevalent system" design pattern.
 
+The intended usage is assist you in making a prevalent system. Thus you work with your in-memory data and wrap every writing call into one of (apply-transaction*) macros.
+
+Also it is possible to use it just as the journaling layer to record the (writing) transactions that happened to your system and replay them later.
+
+Transactions are logged as a valid Clojure code, so they are easy to read and run separately. (Just wrap them into dosync)
+
 I consider it a good fit for the prototyping stage of a project development. When you don't want to pay the price of impedance mismatch between the language data structures and your database because your database schema is not stable yet.
 
 However this pattern is used in production by some teams, see Prevayler mail list for details. Of course this implementation can contain bugs and must be tested well before doing that. Though it is very simple and I made some tests.
 
 The disadvantage of the pattern is that your data structures must fit in memory (unless you implement ad-hoc paging solution). However the journaling nature lets you easily switch to other databases. For that you just re-implement your transaction functions (subjects of apply-transaction* ) to write/read from another DB and replay transactions one time (init-db).
-
-The library creates journals in readable and executable form, so you can freely copy paste the transactions, and execute them in REPL. Just wrap them into (dosync) call.
 
 Snapshotting is not yet implemented. It can solve another pattern problem - growing startup time.
 

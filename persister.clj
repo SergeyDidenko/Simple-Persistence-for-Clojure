@@ -21,6 +21,11 @@ Basics:
 
 See README.
 
+WARNING! Do not use atoms inside transaction handlers. 
+If you need atoms, use them outside of apply-transaction* and 
+pass their values into transaction handlers. You need this because
+Atom actions are not rollbacked in a failing dosync block.
+
 Apply-transaction macro uses a smart buffer,
 apply-transaction-and-block writes immediately, see their docs.
 
