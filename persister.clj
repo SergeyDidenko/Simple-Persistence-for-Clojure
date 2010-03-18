@@ -21,7 +21,7 @@ Basics:
 
 See README.
 
-WARNING! Do not use atoms inside transaction handlers. 
+WARNING! Do not use atoms inside transaction handlers.
 Atom actions are not rollbacked in a failing dosync block.
 
 Apply-transaction macro uses a smart buffer,
@@ -124,7 +124,7 @@ Notes:
 
 (defn serialized-transaction
     [transaction-id & transaction-params]
-        (str "(" (str-join " " transaction-params) ") ;" transaction-id) )
+        (str "(" (str-join " " (map pr-str transaction-params)) ") ;" transaction-id) )
 
 (declare try-flushing-smart-buffer)
 
@@ -293,8 +293,8 @@ Notes:
 
 (deftest test-serialized-transaction
     (is (=
-        "(transaction param) ;1"
-        (serialized-transaction 1 "transaction" "param") )))
+        "(5 \"param\") ;1"
+        (serialized-transaction 1 5 "param") )))
 
 (deftest test-make-str-join-n
     (let [str-join-dosync (make-str-join-n 3 "(" "-" ")")]

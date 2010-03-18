@@ -14,11 +14,9 @@ The disadvantage of the pattern is that your data structures must fit in memory 
 
 Snapshotting is not yet implemented. It can solve another pattern problem - growing startup time.
 
-In comparison with Prevayler, this library does not block the reads, because  it relies on Clojure STM. However it blocks the writes as Prevayler, because currently there is no way to reliably get/ generate a transaction id without locking.
+In comparison with Prevayler, this library does not block the reads, because  it relies on Clojure STM. However it blocks the writes as Prevayler. To avoid this, atoms can be used to generate a transaction id without locking, but that will make reading and backup logic much more complex.
 
-I think it's possible to modify Clojure STM to return a global transaction id. Then locking inside the library can be omitted and writes will not be blocking each other.
-
-Probably it's not as important now, when the most of today computers have <=8 cores and the typical usage pattern is that there are an order of magnitude more reads than writes.
+Probably blocking of writes is not important now, when the most of today computers have <=8 cores and the typical usage pattern is that there are an order of magnitude more reads than writes.
 
 Usage examples:
 
@@ -28,6 +26,7 @@ Usage examples:
 
 (def refx (ref 0))
 (def refy (ref 0))
+(def refs (ref {}))
 
 (defn tr-fn [x y]
    (do
@@ -43,14 +42,18 @@ Usage examples:
    (ref-set refx (inc @refx))
    (ref-set refy (inc @refy)) )
 
+(defn tr-set-s [new-s]
+    (ref-set refs new-s) )
+
 (init-db)
 (apply-transaction tr-fn 1 2)
 (apply-transaction tr-fn 10 20)
 (apply-transaction tr-fn-swap)
 (apply-transaction tr-inc)
-[refx refy]
+(apply-transaction tr-set-s {:a :bb "key" #{"val1" :val2}})
+[refx refy refs]
 
-[#<Ref@5bb966: 23> #<Ref@1e903d5: 12>]
+[#<Ref@5976c2: 23> #<Ref@183e7de: 12> #<Ref@112e7f7: {:a :bb, "key" #{:val2 "val1"}}>]
 
 2. the second run
 
@@ -58,6 +61,7 @@ Usage examples:
 
 (def refx (ref 0))
 (def refy (ref 0))
+(def refs (ref {}))
 
 (defn tr-fn [x y]
    (do
@@ -73,10 +77,13 @@ Usage examples:
    (ref-set refx (inc @refx))
    (ref-set refy (inc @refy)) )
 
-(init-db)
-[refx refy]
+(defn tr-set-s [new-s]
+    (ref-set refs new-s) )
 
-[#<Ref@5bb966: 23> #<Ref@1e903d5: 12>]
+(init-db)
+[refx refy refs]
+
+[#<Ref@10fe2b9: 23> #<Ref@1ee148b: 12> #<Ref@186d484: {:a :bb, "key" #{:val2 "val1"}}>]
 
 
 Note that journaled functions must be accessible in the current namespace when you replay transactions.
