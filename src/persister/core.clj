@@ -66,11 +66,24 @@ after they are put into agent queues
 "}
     persister.core
 
-  (:import (java.io FileOutputStream File PrintWriter OutputStreamWriter))
-  (:use
-   [clojure.contrib.duck-streams :only(read-lines)]
-   [clojure.contrib.str-utils :only(str-join)]
-   [clojure.test] ))
+  (:import (java.io FileOutputStream File PrintWriter OutputStreamWriter
+                    BufferedReader InputStreamReader FileInputStream))
+  (:require [clojure.string :as string]))
+
+;;; Temporaly adapted from deprecated clojure.contrib.duck-streams
+(defn read-lines
+  "Like clojure.core/line-seq but opens f with reader.  Automatically
+  closes the reader AFTER YOU CONSUME THE ENTIRE SEQUENCE."
+  [^String f]
+  (let [read-line (fn this [^BufferedReader rdr]
+                    (lazy-seq
+                     (if-let [line (.readLine rdr)]
+                       (cons line (this rdr))
+                       (.close rdr))))]
+    ;; 
+    (read-line
+     (BufferedReader. (InputStreamReader. (FileInputStream. (File. f)))))))
+    ;; (read-line (reader f))))
 
 (def buffering-agent
   (agent {
@@ -119,7 +132,7 @@ after they are put into agent queues
 
 (defn serialized-transaction
   [transaction-id & transaction-params]
-  (str "(" (str-join " " (map pr-str transaction-params)) ") ;" transaction-id) )
+  (str "(" (string/join " " (map pr-str transaction-params)) ") ;" transaction-id) )
 
 (declare try-flushing-smart-buffer)
 
@@ -166,7 +179,7 @@ after they are put into agent queues
         :pending-transactions new-pending-transactions
         :buffer-first-transaction-id new-buffer-first-transaction-id)
       (do
-        (persist-string (str-join "\n" new-pending-transactions ) new-buffer-first-transaction-id)
+        (persist-string (string/join "\n" new-pending-transactions ) new-buffer-first-transaction-id)
         (assoc agent-state :pending-transactions []) ))))
 
 (defn persist-string-in-smart-buffer
@@ -246,7 +259,7 @@ and returns sequence ([processed-number-accumulator joined-items-chunk]...)
              new-acc-size (+ acc-size (count tr-list))]
          (cons
           [new-acc-size
-           (str start-str (apply str-join (cons join-str (list tr-list))) end-str)
+           (str start-str (apply string/join (cons join-str (list tr-list))) end-str)
            ]
           (joinn (drop n s) new-acc-size ) ))))))
 
