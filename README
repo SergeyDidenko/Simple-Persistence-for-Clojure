@@ -22,7 +22,7 @@ Usage examples:
 
 1. first run
 
-(use 'persister)
+(use 'persister.core)
 
 (def refx (ref 0))
 (def refy (ref 0))
@@ -57,7 +57,7 @@ Usage examples:
 
 2. the second run
 
-(use 'persister)
+(use 'persister.core)
 
 (def refx (ref 0))
 (def refy (ref 0))
